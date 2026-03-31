@@ -30,26 +30,18 @@ public class UserGenrePreference {
     @JoinColumn(name = "genre_id", nullable = false)
     private Genre genre;
 
-    @Setter
-    @Column(name = "weight", nullable = false, precision = 6, scale = 3)
-    private BigDecimal weight = BigDecimal.ONE;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public UserGenrePreference(UserAccount user, Genre genre, BigDecimal weight) {
+    public UserGenrePreference(UserAccount user, Genre genre) {
         this.user = user;
         this.genre = genre;
-        this.weight = weight;
     }
 
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = Instant.now();
-        }
-        if (weight == null) {
-            weight = BigDecimal.ONE;
         }
     }
 }

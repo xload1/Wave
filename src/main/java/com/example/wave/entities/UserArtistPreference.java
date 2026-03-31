@@ -30,26 +30,18 @@ public class UserArtistPreference {
     @JoinColumn(name = "artist_id", nullable = false)
     private Artist artist;
 
-    @Setter
-    @Column(name = "weight", nullable = false, precision = 6, scale = 3)
-    private BigDecimal weight = BigDecimal.ONE;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public UserArtistPreference(UserAccount user, Artist artist, BigDecimal weight) {
+    public UserArtistPreference(UserAccount user, Artist artist) {
         this.user = user;
         this.artist = artist;
-        this.weight = weight;
     }
 
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = Instant.now();
-        }
-        if (weight == null) {
-            weight = BigDecimal.ONE;
         }
     }
 }
