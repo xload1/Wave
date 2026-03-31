@@ -1,4 +1,4 @@
-package com.example.wave.DTOs;
+package com.example.wave.DTOs.views;
 
 import java.util.List;
 

@@ -1,8 +1,6 @@
-package com.example.wave.DTOs;
+package com.example.wave.DTOs.views;
 
 import com.example.wave.entities.PreferenceType;
-
-import java.math.BigDecimal;
 
 public record TrackPreferenceView(
         Long trackId,

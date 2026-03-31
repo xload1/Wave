@@ -1,6 +1,9 @@
 package com.example.wave.services;
 
-import com.example.wave.DTOs.*;
+import com.example.wave.DTOs.views.ArtistPreferenceView;
+import com.example.wave.DTOs.views.GenrePreferenceView;
+import com.example.wave.DTOs.views.TrackPreferenceView;
+import com.example.wave.DTOs.views.UserPreferencesView;
 import com.example.wave.entities.*;
 import com.example.wave.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -8,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 

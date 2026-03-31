@@ -1,6 +1,4 @@
-package com.example.wave.DTOs;
-
-import java.math.BigDecimal;
+package com.example.wave.DTOs.views;
 
 public record GenrePreferenceView(
         Long genreId,
