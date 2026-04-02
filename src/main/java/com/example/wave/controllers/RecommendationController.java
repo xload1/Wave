@@ -1,5 +1,6 @@
 package com.example.wave.controllers;
 
+import com.example.wave.debug.UserScore;
 import com.example.wave.entities.UserAccount;
 import com.example.wave.services.RecommendationService;
 import lombok.RequiredArgsConstructor;
@@ -12,14 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/recommend")
+@RequestMapping("/explore")
 @RequiredArgsConstructor
 @Validated
 public class RecommendationController {
     private final RecommendationService recommendationService;
 
-    @GetMapping("/{id}/get-recommendations")
-    public List<UserAccount> getUserRecommendations(@PathVariable Integer id){
-        return recommendationService.getRecommendationList(id);
+    @GetMapping("/{id}/recommendations")
+    public List<UserScore> getUserRecommendationsDebug(@PathVariable Integer id){
+        return recommendationService.getRecommendationListAndValues(id);
     }
 }

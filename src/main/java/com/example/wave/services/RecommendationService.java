@@ -1,5 +1,6 @@
 package com.example.wave.services;
 
+import com.example.wave.debug.UserScore;
 import com.example.wave.entities.PreferenceType;
 import com.example.wave.entities.UserAccount;
 import com.example.wave.entities.UserTrackPreference;
@@ -22,63 +23,83 @@ public class RecommendationService {
     private final TrackRepository trackRepository;
     private final UserAccountRepository userAccountRepository;
 
-    public List<UserAccount> getRecommendationList(int main_id){
+    public List<UserAccount> getRecommendationList(int id){
+        return  getRecommendationListAndValues(id).stream().map(e -> e.userAccount).toList();
+    }
+    public List<UserScore> getRecommendationListAndValues(int mainId) {
         List<UserTrackPreference> userTrackPreferences = userTrackPreferenceRepository.findAll();
 
-        int userCount = (int) userAccountRepository.count();
-        int trackCount = (int) trackRepository.count();
+        record Edge(int to, boolean fav) {}
+        record EdgeBfs(int to, int steps, int score, boolean prevFav) {}
 
-        //create basic adjacency list
-        record Edge(int to, boolean fav, int pop) {}
-        HashMap<Integer, List<Edge>> adjList = new HashMap<>();
+        Map<Integer, List<Edge>> adjList = new HashMap<>();
 
-        for(UserTrackPreference preference : userTrackPreferences){
-            Integer uId = preference.getUser().getId().intValue();
-            Integer tId = preference.getTrack().getId().intValue() + userCount + 1;
+        // build adjacency list
+        for (UserTrackPreference preference : userTrackPreferences) {
+            int userId = preference.getUser().getId().intValue();
+            int trackId = -preference.getTrack().getId().intValue();
+            boolean fav = preference.getPreferenceType() == PreferenceType.FAVORITE;
 
-            adjList.computeIfAbsent(uId, k -> new ArrayList<Edge>());
-            adjList.computeIfAbsent(tId, k -> new ArrayList<Edge>());
+            adjList.computeIfAbsent(userId, k -> new ArrayList<>());
+            adjList.computeIfAbsent(trackId, k -> new ArrayList<>());
 
-            adjList.get(uId).add(new Edge(tId, preference.getPreferenceType().equals(PreferenceType.FAVORITE), preference.getTrack().getPopularity()));
-            adjList.get(tId).add(new Edge(uId, preference.getPreferenceType().equals(PreferenceType.FAVORITE), preference.getTrack().getPopularity()));
+            adjList.get(userId).add(new Edge(trackId, fav));
+            adjList.get(trackId).add(new Edge(userId, fav));
         }
 
-        int MAXID = userCount + trackCount + 1;
-        boolean visited[][] = new boolean[MAXID][MAXID];
+        List<Edge> startEdges = adjList.get(mainId);
+        if (startEdges == null || startEdges.isEmpty()) return List.of();
 
-        record EdgeBFS(int to, int steps, int curScore, boolean prevFav) {}
+        Queue<EdgeBfs> queue = new ArrayDeque<>();
+        Set<Long> usedEdges = new HashSet<>();
+        Map<Integer, Integer> found = new HashMap<>();
 
-        Queue<EdgeBFS> queue = new ArrayDeque<>();
-
-        //BFS base
-        for(Edge e : adjList.get(main_id)) {
-            int popScaled = e.pop;
-            queue.add(new EdgeBFS(e.to, 1, popScaled*100, e.fav));
-            visited[main_id][e.to] = visited[e.to][main_id] = true;
+        // add base edges
+        for (Edge edge : startEdges) {
+            int baseScore = edge.fav ? 3000 : 1200;
+            queue.add(new EdgeBfs(edge.to, 1, baseScore, edge.fav));
+            usedEdges.add(edgeKey(mainId, edge.to));
         }
 
-        HashMap<Integer, Integer> found = new HashMap<>();
+        // BFS queue
+        while (!queue.isEmpty()) {
+            EdgeBfs cur = queue.poll();
 
-        while(!queue.isEmpty()){
-            EdgeBFS cur = queue.poll();
+            boolean person = cur.to > 0;
+            if (person && cur.to != mainId) found.merge(cur.to, cur.score, Integer::sum);
 
-            boolean person = cur.to <= userCount;
-            if(found.containsKey(cur.to)) found.put(cur.to, found.get(cur.to) + cur.curScore);
-            else found.put(cur.to, cur.curScore);
+            if (cur.steps >= 6) continue;
 
-            if(cur.steps > 7) continue;
+            for (Edge next : adjList.getOrDefault(cur.to, List.of())) {
+                long key = edgeKey(cur.to, next.to);
+                if (!usedEdges.add(key)) continue;
 
-            for(Edge neighbour : adjList.get(cur.to)){
-                int popScaled = neighbour.pop;
-                int favBonus = !person && cur.prevFav && neighbour.fav ? 4 : 1;
-                int stepMul = cur.steps * 10;
+                int edgeScore = next.fav ? 3000 : 1200;
+                // both like the same track multiplier
+                int favBonus = (!person && cur.prevFav && next.fav) ? 3 : 1;
+                int depthPenalty = (cur.steps + 1) * (cur.steps + 1) * 4;
 
-                int score = cur.curScore + (100 * favBonus / stepMul) * popScaled;
+                int nextScore = (cur.score + edgeScore * favBonus) / depthPenalty;
+                if (nextScore <= 0) continue;
 
-                queue.add(new EdgeBFS(neighbour.to, cur.steps + 1, score, neighbour.fav));
+                queue.add(new EdgeBfs(next.to, cur.steps + 1, nextScore, next.fav));
             }
         }
 
-        return found.values().stream().sorted(Integer::compareTo).map( e -> userAccountRepository.findById(e.longValue()).orElseThrow()).toList();
+        return found.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                .map(entry -> new UserScore(userAccountRepository.findById((long) entry.getKey()).orElseThrow(), entry.getValue()))
+                .toList();
+    }
+
+    private long edgeKey(int a, int b) {
+        long x = a;
+        long y = b;
+        if (x > y) {
+            long tmp = x;
+            x = y;
+            y = tmp;
+        }
+        return (x << 32) ^ (y & 0xffffffffL);
     }
 }
