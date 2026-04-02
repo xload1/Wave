@@ -3,6 +3,7 @@ package com.example.wave.services;
 import com.example.wave.debug.UserScore;
 import com.example.wave.entities.PreferenceType;
 import com.example.wave.entities.UserAccount;
+import com.example.wave.entities.UserArtistPreference;
 import com.example.wave.entities.UserTrackPreference;
 import com.example.wave.repositories.*;
 import lombok.RequiredArgsConstructor;
@@ -83,6 +84,38 @@ public class RecommendationService {
                 if (nextScore <= 0) continue;
 
                 queue.add(new EdgeBfs(next.to, cur.steps + 1, nextScore, next.fav));
+            }
+        }
+
+        // Add contribution for same artists (only direct, without graph)
+        List<UserArtistPreference> userArtistPreferences = userArtistPreferenceRepository.findAll();
+
+        Map<Integer, Set<Long>> userArtists = new HashMap<>();
+
+        for (UserArtistPreference preference : userArtistPreferences) {
+            int userId = preference.getUser().getId().intValue();
+            long artistId = preference.getArtist().getId();
+
+            userArtists
+                    .computeIfAbsent(userId, k -> new HashSet<>())
+                    .add(artistId);
+        }
+
+        Set<Long> mainArtists = userArtists.getOrDefault(mainId, Set.of());
+
+        for (Map.Entry<Integer, Set<Long>> entry : userArtists.entrySet()) {
+            int userId = entry.getKey();
+            if (userId == mainId) continue;
+
+            int commonArtists = 0;
+            for (Long artistId : entry.getValue()) {
+                if (mainArtists.contains(artistId)) {
+                    commonArtists++;
+                }
+            }
+
+            if (commonArtists > 0) {
+                found.merge(userId, commonArtists * 500, Integer::sum);
             }
         }
 
