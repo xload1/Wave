@@ -61,4 +61,5 @@ public class UsersController {
     public UserPreferencesView getUserPreferences(@PathVariable Long id) {
         return preferenceService.getUserPreferences(id);
     }
+
 }
