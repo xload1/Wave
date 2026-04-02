@@ -57,7 +57,8 @@ public class RecommendationService {
 
         // add base edges
         for (Edge edge : startEdges) {
-            int baseScore = edge.fav ? 3000 : 1200;
+            // main user's favourite preference should have more significance so 5000 instead of 3000
+            int baseScore = edge.fav ? 5000 : 1200;
             queue.add(new EdgeBfs(edge.to, 1, baseScore, edge.fav));
             usedEdges.add(edgeKey(mainId, edge.to));
         }
@@ -116,7 +117,7 @@ public class RecommendationService {
             }
 
             if (commonArtists > 0) {
-                found.merge(userId, commonArtists * 500, Integer::sum);
+                found.merge(userId, commonArtists * 1000, Integer::sum);
             }
         }
 
