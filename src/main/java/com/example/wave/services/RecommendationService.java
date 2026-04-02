@@ -76,9 +76,10 @@ public class RecommendationService {
                 if (!usedEdges.add(key)) continue;
 
                 int edgeScore = next.fav ? 3000 : 1200;
-                // both like the same track multiplier
-                int favBonus = (!person && cur.prevFav && next.fav) ? 3 : 1;
-                int depthPenalty = (cur.steps + 1) * (cur.steps + 1) * 4;
+                // both have same favourite track multiplier, direct double favourite relation should be most significant
+                int favBonus = (!person && cur.prevFav && next.fav) ? cur.steps == 1 ? 5 : 3 : 1;
+
+                int depthPenalty = (cur.steps + 1) * (cur.steps + 1) * 2;
 
                 int nextScore = (cur.score + edgeScore * favBonus) / depthPenalty;
                 if (nextScore <= 0) continue;
