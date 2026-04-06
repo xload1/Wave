@@ -1,5 +1,6 @@
 package com.example.wave.controllers;
 
+import com.example.wave.DTOs.views.SpotifyArtistSearchView;
 import com.example.wave.DTOs.views.SpotifyTrackView;
 import com.example.wave.services.spotify.SpotifyCatalogService;
 import jakarta.validation.constraints.NotBlank;
@@ -23,5 +24,10 @@ public class SpotifyController {
     @GetMapping("/search/tracks")
     public List<SpotifyTrackView> searchTracks(@RequestParam @NotBlank String query) {
         return spotifyCatalogService.searchTracks(query);
+    }
+
+    @GetMapping("/search/artists")
+    public List<SpotifyArtistSearchView> searchArtists(@RequestParam @NotBlank String query) {
+        return spotifyCatalogService.searchArtists(query);
     }
 }

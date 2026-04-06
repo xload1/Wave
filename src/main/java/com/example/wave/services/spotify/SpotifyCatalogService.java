@@ -1,6 +1,8 @@
 package com.example.wave.services.spotify;
 
+import com.example.wave.DTOs.responses.SpotifyArtistSearchResponse;
 import com.example.wave.DTOs.responses.SpotifyTrackSearchResponse;
+import com.example.wave.DTOs.views.SpotifyArtistSearchView;
 import com.example.wave.DTOs.views.SpotifyArtistView;
 import com.example.wave.DTOs.views.SpotifyTrackView;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,38 @@ public class SpotifyCatalogService {
                                 : item.artists().stream()
                                 .map(artist -> new SpotifyArtistView(artist.id(), artist.name()))
                                 .toList(),
+                        item.external_urls() == null ? null : item.external_urls().spotify()
+                ))
+                .toList();
+    }
+
+    public List<SpotifyArtistSearchView> searchArtists(String query) {
+        if (query == null || query.isBlank()) {
+            throw new IllegalArgumentException("query must not be blank");
+        }
+
+        String accessToken = spotifyTokenService.getAccessToken();
+
+        SpotifyArtistSearchResponse response = restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/search")
+                        .queryParam("q", query)
+                        .queryParam("type", "artist")
+                        .queryParam("limit", 10)
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .retrieve()
+                .body(SpotifyArtistSearchResponse.class);
+
+        if (response == null || response.artists() == null || response.artists().items() == null) {
+            return List.of();
+        }
+
+        return response.artists().items().stream()
+                .map(item -> new SpotifyArtistSearchView(
+                        item.id(),
+                        item.name(),
+                        item.popularity(),
                         item.external_urls() == null ? null : item.external_urls().spotify()
                 ))
                 .toList();
