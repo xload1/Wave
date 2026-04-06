@@ -165,4 +165,36 @@ public class PreferenceService {
                 genrePreferences
         );
     }
+
+    @Transactional
+    public void deleteTrackPreference(Long userId, Long trackId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        if (trackId == null) {
+            throw new IllegalArgumentException("trackId must not be null");
+        }
+
+        UserTrackPreferenceId id = new UserTrackPreferenceId(userId, trackId);
+
+        if (!userTrackPreferenceRepository.existsById(id)) return;
+
+        userTrackPreferenceRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteArtistPreference(Long userId, Long artistId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        if (artistId == null) {
+            throw new IllegalArgumentException("artistId must not be null");
+        }
+
+        UserArtistPreferenceId id = new UserArtistPreferenceId(userId, artistId);
+
+        if (!userArtistPreferenceRepository.existsById(id)) return;
+
+        userArtistPreferenceRepository.deleteById(id);
+    }
 }

@@ -7,6 +7,7 @@ public record SpotifyTrackView(
         String title,
         Integer popularity,
         List<SpotifyArtistView> artists,
-        String spotifyUrl
+        String spotifyUrl,
+        String imageUrl
 ) {
 }

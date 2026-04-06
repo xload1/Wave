@@ -15,7 +15,8 @@ public record SpotifyTrackSearchResponse(
             String name,
             Integer popularity,
             List<Artist> artists,
-            ExternalUrls external_urls
+            ExternalUrls external_urls,
+            Album album
     ) {
     }
 
@@ -27,6 +28,18 @@ public record SpotifyTrackSearchResponse(
 
     public record ExternalUrls(
             String spotify
+    ) {
+    }
+
+    public record Album(
+            List<Image> images
+    ) {
+    }
+
+    public record Image(
+            String url,
+            Integer height,
+            Integer width
     ) {
     }
 }

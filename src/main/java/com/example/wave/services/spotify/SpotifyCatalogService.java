@@ -45,8 +45,21 @@ public class SpotifyCatalogService {
             return List.of();
         }
 
+
+
         return response.tracks().items().stream()
-                .map(item -> new SpotifyTrackView(
+                .map(item -> {
+                    // find first small image from all sizes
+                    String imageUrl = null;
+                    if (item.album() != null && item.album().images() != null && !item.album().images().isEmpty()) {
+                        imageUrl = item.album().images().stream()
+                                .filter(image -> image.width() != null && image.width() <= 300)
+                                .findFirst()
+                                .orElse(item.album().images().get(item.album().images().size() - 1))
+                                .url();
+                    }
+
+                    return new SpotifyTrackView(
                         item.id(),
                         item.name(),
                         item.popularity(),
@@ -55,8 +68,10 @@ public class SpotifyCatalogService {
                                 : item.artists().stream()
                                 .map(artist -> new SpotifyArtistView(artist.id(), artist.name()))
                                 .toList(),
-                        item.external_urls() == null ? null : item.external_urls().spotify()
-                ))
+                        item.external_urls() == null ? null : item.external_urls().spotify(),
+                        imageUrl
+                );
+                })
                 .toList();
     }
 
