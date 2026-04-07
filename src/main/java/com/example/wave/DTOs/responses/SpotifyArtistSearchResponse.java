@@ -14,12 +14,20 @@ public record SpotifyArtistSearchResponse(
             String id,
             String name,
             Integer popularity,
-            ExternalUrls external_urls
+            ExternalUrls external_urls,
+            List<Image> images
     ) {
     }
 
     public record ExternalUrls(
             String spotify
+    ) {
+    }
+
+    public record Image(
+            String url,
+            Integer height,
+            Integer width
     ) {
     }
 }

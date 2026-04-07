@@ -2,6 +2,7 @@ package com.example.wave.services;
 
 import com.example.wave.DTOs.views.cardItemsViews.CardItemListView;
 import com.example.wave.DTOs.views.cardItemsViews.CardItemView;
+import com.example.wave.DTOs.views.cardItemsViews.ItemType;
 import com.example.wave.debug.UserScore;
 import com.example.wave.entities.*;
 import com.example.wave.repositories.*;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -136,38 +138,73 @@ public class RecommendationService {
     }
 
     public List<CardItemListView> generateCardSimilarities(Long mainId, Long otherId){
-
         List<TrackR> mainTracksR = userTrackPreferenceRepository.findAllByUser_Id(mainId).stream().map(e -> new TrackR(e.getTrack(), e.getPreferenceType())).toList();
         List<TrackR> otherTracks = userTrackPreferenceRepository.findAllByUser_Id(otherId).stream().map(e -> new TrackR(e.getTrack(), e.getPreferenceType())).toList();
 
         List<Artist> mainArtists = userArtistPreferenceRepository.findAllByUser_Id(mainId).stream().map(UserArtistPreference::getArtist).toList();
-        List<Artist> otherArtists = userArtistPreferenceRepository.findAllByUser_Id(otherId).stream().map(UserArtistPreference::getArtist).toList();
+        HashSet<Artist> otherArtists = userArtistPreferenceRepository.findAllByUser_Id(otherId).stream().map(UserArtistPreference::getArtist).collect(Collectors.toCollection(HashSet::new));
 
         List<CardItemView> similarFavourites = new ArrayList<>();
         List<CardItemView> similarLikes = new ArrayList<>();
-        List<CardItemView> similarAuthors = new ArrayList<>();
+        List<CardItemView> similarArtists = new ArrayList<>();
 
         HashSet<Track> otherFavourites = new HashSet<>();
         HashSet<Track> otherLikes = new HashSet<>();
 
         for(TrackR otherTrack : otherTracks) {
-            if (otherTrack.preferenceType == PreferenceType.FAVORITE) otherFavourites.add(otherTrack.track);
-            otherLikes.add(otherTrack.track);
+            if (otherTrack.preferenceType() == PreferenceType.FAVORITE) otherFavourites.add(otherTrack.track());
+            otherLikes.add(otherTrack.track());
         }
 
         mainTracksR = sortWithSlightRandom(mainTracksR);
 
         for(TrackR mainTrackR : mainTracksR){
-            Track mainTrack = mainTrackR.track;
-            if(otherLikes.contains(mainTrack){
-
-                if(otherFavourites.contains(mainTrack) && mainTrackR.preferenceType == PreferenceType.FAVORITE)
+            Track mainTrack = mainTrackR.track();
+            if(otherLikes.contains(mainTrack)) {
+                String imageUrl = spotifyCatalogService.getTrackBySpotifyId(mainTrack.getExternalId()).imageUrl();
+                if (otherFavourites.contains(mainTrack) && mainTrackR.preferenceType == PreferenceType.FAVORITE)
                     similarFavourites.add(
-                            new CardItemView(mainTrack.getTitle(), mainTrack.getArtist(), mainTrack.get)
-                    )
-                }
+                            new CardItemView(mainTrack.getTitle(),
+                                    mainTrack.getArtist().getName(),
+                                    imageUrl)
+                    );
+                else similarLikes.add(
+                        new CardItemView(mainTrack.getTitle(),
+                                mainTrack.getArtist().getName(),
+                                imageUrl)
+
+                );
             }
+
+            if(similarFavourites.size() > 4 && similarLikes.size() > 4) break;
         }
+
+        for(Artist artist : mainArtists){
+            if(otherArtists.contains(artist)) similarArtists.add(
+                    new CardItemView(
+                            artist.getName(),
+                            " ",
+                            spotifyCatalogService.getArtistBySpotifyId(artist.getExternalId()).imageUrl())
+            );
+            if(similarArtists.size() > 4) break;
+        }
+
+        CardItemListView similarFavouritesCILV = new CardItemListView(ItemType.FAV, similarFavourites.stream().limit(5).toList());
+        CardItemListView similarLikesCILV = new CardItemListView(ItemType.LIK, similarLikes.stream().limit(5).toList());
+        CardItemListView similarArtistsCILV = new CardItemListView(ItemType.ART, similarArtists.stream().limit(5).toList());
+
+        List<CardItemListView> result = new ArrayList<>();
+        if(similarFavouritesCILV.itemList().size() > 0) result.add(similarFavouritesCILV);
+        if(similarArtistsCILV.itemList().size() > 2 * similarLikesCILV.itemList().size()){
+            result.add(similarArtistsCILV);
+            result.add(similarLikesCILV);
+        }
+        else {
+            result.add(similarLikesCILV);
+            result.add(similarArtistsCILV);
+        }
+
+        return result;
     }
     record TrackR(Track track, PreferenceType preferenceType) {}
     record ItemWithOrder(TrackR item, double sortKey) {}

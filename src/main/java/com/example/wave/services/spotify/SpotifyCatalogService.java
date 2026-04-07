@@ -46,33 +46,8 @@ public class SpotifyCatalogService {
             return List.of();
         }
 
-
-
         return response.tracks().items().stream()
-                .map(item -> {
-                    // find first small image from all sizes
-                    String imageUrl = null;
-                    if (item.album() != null && item.album().images() != null && !item.album().images().isEmpty()) {
-                        imageUrl = item.album().images().stream()
-                                .filter(image -> image.width() != null && image.width() <= 300)
-                                .findFirst()
-                                .orElse(item.album().images().get(item.album().images().size() - 1))
-                                .url();
-                    }
-
-                    return new SpotifyTrackView(
-                        item.id(),
-                        item.name(),
-                        item.popularity(),
-                        item.artists() == null
-                                ? List.of()
-                                : item.artists().stream()
-                                .map(artist -> new SpotifyArtistView(artist.id(), artist.name()))
-                                .toList(),
-                        item.external_urls() == null ? null : item.external_urls().spotify(),
-                        imageUrl
-                );
-                })
+                .map(this::getSpotifyTrackView)
                 .toList();
     }
 
@@ -96,6 +71,11 @@ public class SpotifyCatalogService {
             throw new EntityNotFoundException("Spotify track not found: " + spotifyTrackId);
         }
 
+        return getSpotifyTrackView(item);
+    }
+
+    private SpotifyTrackView getSpotifyTrackView(SpotifyTrackSearchResponse.Item item) {
+        // find first small image from all sizes
         String imageUrl = null;
         if (item.album() != null && item.album().images() != null && !item.album().images().isEmpty()) {
             imageUrl = item.album().images().stream()
@@ -142,12 +122,48 @@ public class SpotifyCatalogService {
         }
 
         return response.artists().items().stream()
-                .map(item -> new SpotifyArtistSearchView(
-                        item.id(),
-                        item.name(),
-                        item.popularity(),
-                        item.external_urls() == null ? null : item.external_urls().spotify()
-                ))
+                .map(this::getSpotifyArtistSearchView)
                 .toList();
+    }
+
+    public SpotifyArtistSearchView getArtistBySpotifyId(String spotifyArtistId) {
+        if (spotifyArtistId == null || spotifyArtistId.isBlank()) {
+            throw new IllegalArgumentException("spotifyArtistId must not be blank");
+        }
+
+        String accessToken = spotifyTokenService.getAccessToken();
+
+        SpotifyArtistSearchResponse.Item item = restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/artists/{id}")
+                        .build(spotifyArtistId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .retrieve()
+                .body(SpotifyArtistSearchResponse.Item.class);
+
+        if (item == null) {
+            throw new EntityNotFoundException("Spotify artist not found: " + spotifyArtistId);
+        }
+
+        return getSpotifyArtistSearchView(item);
+    }
+
+    private SpotifyArtistSearchView getSpotifyArtistSearchView(SpotifyArtistSearchResponse.Item item) {
+        String imageUrl = null;
+        if (item.images() != null && !item.images().isEmpty()) {
+            imageUrl = item.images().stream()
+                    .filter(image -> image.width() != null && image.width() <= 300)
+                    .findFirst()
+                    .orElse(item.images().get(item.images().size() - 1))
+                    .url();
+        }
+
+        return new SpotifyArtistSearchView(
+                item.id(),
+                item.name(),
+                item.popularity(),
+                item.external_urls() == null ? null : item.external_urls().spotify(),
+                imageUrl
+        );
     }
 }
