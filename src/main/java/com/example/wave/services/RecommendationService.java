@@ -3,7 +3,7 @@ package com.example.wave.services;
 import com.example.wave.DTOs.views.cardItemsViews.CardItemListView;
 import com.example.wave.DTOs.views.cardItemsViews.CardItemView;
 import com.example.wave.DTOs.views.cardItemsViews.ItemType;
-import com.example.wave.debug.UserScore;
+import com.example.wave.other.UserScore;
 import com.example.wave.entities.*;
 import com.example.wave.repositories.*;
 import com.example.wave.services.spotify.SpotifyCatalogService;
@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -21,10 +22,11 @@ public class RecommendationService {
     private final UserTrackPreferenceRepository userTrackPreferenceRepository;
     private final UserArtistPreferenceRepository userArtistPreferenceRepository;
     private final UserAccountRepository userAccountRepository;
+    private final TrackRepository trackRepository;
     private final SpotifyCatalogService spotifyCatalogService;
 
     public List<UserAccount> getRecommendationList(int id){
-        return  getRecommendationListAndValues(id).stream().map(e -> e.userAccount).toList();
+        return  getRecommendationListAndValues(id).stream().map(UserScore::userAccount).toList();
     }
     public List<UserScore> getRecommendationListAndValues(int mainId) {
         List<UserTrackPreference> userTrackPreferences = userTrackPreferenceRepository.findAll();
@@ -58,7 +60,9 @@ public class RecommendationService {
         for (Edge edge : startEdges) {
             // main user's favourite preference should have more significance so 5000 instead of 3000
             int baseScore = edge.fav ? 5000 : 1200;
-            queue.add(new EdgeBfs(edge.to, 1, baseScore, edge.fav));
+            int popularity = trackRepository.findById((long) -edge.to).orElseThrow().getPopularity();
+            double popularityMultiplier = 25.0 / (popularity + 25.0);
+            queue.add(new EdgeBfs(edge.to, 1, (int) (baseScore * popularityMultiplier), edge.fav));
             usedEdges.add(edgeKey(mainId, edge.to));
         }
 
@@ -79,9 +83,13 @@ public class RecommendationService {
                 // both have same favourite track multiplier, direct double favourite relation should be most significant
                 int favBonus = (!person && cur.prevFav && next.fav) ? cur.steps == 1 ? 5 : 3 : 1;
 
+                int trackId = person ? next.to : cur.to;
+                int popularity = trackRepository.findById((long) -trackId).orElseThrow().getPopularity();
+                double popularityMultiplier = 25.0 / (popularity + 25.0);
+
                 int depthPenalty = (cur.steps + 1) * (cur.steps + 1) * 2;
 
-                int nextScore = (cur.score + edgeScore * favBonus) / depthPenalty;
+                int nextScore = (cur.score + (int)(edgeScore * popularityMultiplier * favBonus)) / depthPenalty;
                 if (nextScore <= 0) continue;
 
                 queue.add(new EdgeBfs(next.to, cur.steps + 1, nextScore, next.fav));
@@ -120,9 +128,29 @@ public class RecommendationService {
             }
         }
 
+        List<Integer> scores = new ArrayList<>(found.values());
+        double med = median(scores);
+        double mad = mad(scores, med);
+
+        // robust scale
+        double scale = Math.max(1.0, mad * 1.4826);
+
+        // randomness strength
+        double temperature = 0.30;
+
+        Random random = new Random();
+
         return found.entrySet().stream()
-                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
-                .map(entry -> new UserScore(userAccountRepository.findById((long) entry.getKey()).orElseThrow(), entry.getValue()))
+                .map(entry -> {
+                    double z = (entry.getValue() - med) / scale;
+                    double noisyKey = z + temperature * gumbel(random);
+                    return new RankedUser(entry.getKey(), entry.getValue(), noisyKey);
+                })
+                .sorted(Comparator.comparingDouble(RankedUser::sortKey).reversed())
+                .map(item -> new UserScore(
+                        userAccountRepository.findById((long) item.userId()).orElseThrow(),
+                        item.score()
+                ))
                 .toList();
     }
 
@@ -135,6 +163,47 @@ public class RecommendationService {
             y = tmp;
         }
         return (x << 32) ^ (y & 0xffffffffL);
+    }
+
+    record RankedUser(int userId, int score, double sortKey) {}
+
+    private static double median(List<Integer> values) {
+        if (values.isEmpty()) return 0.0;
+
+        List<Integer> sorted = new ArrayList<>(values);
+        sorted.sort(Integer::compareTo);
+
+        int n = sorted.size();
+        if ((n & 1) == 1) {
+            return sorted.get(n / 2);
+        }
+        return (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2.0;
+    }
+
+    private static double mad(List<Integer> values, double median) {
+        if (values.isEmpty()) return 1.0;
+
+        List<Double> deviations = new ArrayList<>(values.size());
+        for (int value : values) {
+            deviations.add(Math.abs(value - median));
+        }
+        deviations.sort(Double::compareTo);
+
+        int n = deviations.size();
+        double mad;
+        if ((n & 1) == 1) {
+            mad = deviations.get(n / 2);
+        } else {
+            mad = (deviations.get(n / 2 - 1) + deviations.get(n / 2)) / 2.0;
+        }
+
+        return mad;
+    }
+
+    private static double gumbel(Random random) {
+        double u = random.nextDouble();
+        u = Math.max(u, 1e-12);
+        return -Math.log(-Math.log(u));
     }
 
     public List<CardItemListView> generateCardSimilarities(Long mainId, Long otherId){

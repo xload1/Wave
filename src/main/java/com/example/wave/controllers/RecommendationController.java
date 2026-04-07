@@ -1,7 +1,6 @@
 package com.example.wave.controllers;
 
-import com.example.wave.debug.UserScore;
-import com.example.wave.entities.UserAccount;
+import com.example.wave.other.UserScore;
 import com.example.wave.services.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
