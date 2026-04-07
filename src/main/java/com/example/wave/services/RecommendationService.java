@@ -1,18 +1,16 @@
 package com.example.wave.services;
 
+import com.example.wave.DTOs.views.cardItemsViews.CardItemListView;
+import com.example.wave.DTOs.views.cardItemsViews.CardItemView;
 import com.example.wave.debug.UserScore;
-import com.example.wave.entities.PreferenceType;
-import com.example.wave.entities.UserAccount;
-import com.example.wave.entities.UserArtistPreference;
-import com.example.wave.entities.UserTrackPreference;
+import com.example.wave.entities.*;
 import com.example.wave.repositories.*;
+import com.example.wave.services.spotify.SpotifyCatalogService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,9 +18,8 @@ import java.util.stream.Collectors;
 public class RecommendationService {
     private final UserTrackPreferenceRepository userTrackPreferenceRepository;
     private final UserArtistPreferenceRepository userArtistPreferenceRepository;
-    private final UserGenrePreferenceRepository userGenrePreferenceRepository;
-    private final TrackRepository trackRepository;
     private final UserAccountRepository userAccountRepository;
+    private final SpotifyCatalogService spotifyCatalogService;
 
     public List<UserAccount> getRecommendationList(int id){
         return  getRecommendationListAndValues(id).stream().map(e -> e.userAccount).toList();
@@ -136,5 +133,60 @@ public class RecommendationService {
             y = tmp;
         }
         return (x << 32) ^ (y & 0xffffffffL);
+    }
+
+    public List<CardItemListView> generateCardSimilarities(Long mainId, Long otherId){
+
+        List<TrackR> mainTracksR = userTrackPreferenceRepository.findAllByUser_Id(mainId).stream().map(e -> new TrackR(e.getTrack(), e.getPreferenceType())).toList();
+        List<TrackR> otherTracks = userTrackPreferenceRepository.findAllByUser_Id(otherId).stream().map(e -> new TrackR(e.getTrack(), e.getPreferenceType())).toList();
+
+        List<Artist> mainArtists = userArtistPreferenceRepository.findAllByUser_Id(mainId).stream().map(UserArtistPreference::getArtist).toList();
+        List<Artist> otherArtists = userArtistPreferenceRepository.findAllByUser_Id(otherId).stream().map(UserArtistPreference::getArtist).toList();
+
+        List<CardItemView> similarFavourites = new ArrayList<>();
+        List<CardItemView> similarLikes = new ArrayList<>();
+        List<CardItemView> similarAuthors = new ArrayList<>();
+
+        HashSet<Track> otherFavourites = new HashSet<>();
+        HashSet<Track> otherLikes = new HashSet<>();
+
+        for(TrackR otherTrack : otherTracks) {
+            if (otherTrack.preferenceType == PreferenceType.FAVORITE) otherFavourites.add(otherTrack.track);
+            otherLikes.add(otherTrack.track);
+        }
+
+        mainTracksR = sortWithSlightRandom(mainTracksR);
+
+        for(TrackR mainTrackR : mainTracksR){
+            Track mainTrack = mainTrackR.track;
+            if(otherLikes.contains(mainTrack){
+
+                if(otherFavourites.contains(mainTrack) && mainTrackR.preferenceType == PreferenceType.FAVORITE)
+                    similarFavourites.add(
+                            new CardItemView(mainTrack.getTitle(), mainTrack.getArtist(), mainTrack.get)
+                    )
+                }
+            }
+        }
+    }
+    record TrackR(Track track, PreferenceType preferenceType) {}
+    record ItemWithOrder(TrackR item, double sortKey) {}
+
+    List<TrackR> sortWithSlightRandom(List<TrackR> items) {
+        Random random = new Random();
+
+        return items.stream()
+                .map(item -> {
+                    int popularity = item.track.getPopularity();
+                    double noise = random.nextDouble(-1.0, 1.0) *
+                                   random.nextDouble(-1.0, 1.0) *
+                                   random.nextDouble(-1.0, 1.0) *
+                                   random.nextDouble(-1.0, 1.0) *
+                                   random.nextDouble(-1.0, 1.0) * 100;
+                    return new ItemWithOrder(item, popularity + noise);
+                })
+                .sorted(Comparator.comparingDouble(ItemWithOrder::sortKey))
+                .map(ItemWithOrder::item)
+                .toList();
     }
 }

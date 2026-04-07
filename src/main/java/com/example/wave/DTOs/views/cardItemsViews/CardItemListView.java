@@ -2,8 +2,8 @@ package com.example.wave.DTOs.views.cardItemsViews;
 
 import java.util.List;
 
-public record ItemListView(
+public record CardItemListView(
         ItemType itemType,
-        List<cardItemView> itemList
+        List<CardItemView> itemList
 ) {
 }

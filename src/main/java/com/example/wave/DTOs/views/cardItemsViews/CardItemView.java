@@ -1,8 +1,8 @@
 package com.example.wave.DTOs.views.cardItemsViews;
 
-public record cardItemView(
-        String itemName,
-        String artist,
+public record CardItemView(
+        String title,
+        String subtitle,
         String imageUrl
 ) {
 }
