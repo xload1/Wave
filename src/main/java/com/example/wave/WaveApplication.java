@@ -4,9 +4,11 @@ import com.example.wave.other.SpotifyProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.annotation.EnableCaching;
 
 @SpringBootApplication
 @EnableConfigurationProperties(SpotifyProperties.class)
+@EnableCaching
 public class WaveApplication {
 
 	public static void main(String[] args) {

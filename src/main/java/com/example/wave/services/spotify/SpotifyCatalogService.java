@@ -7,6 +7,7 @@ import com.example.wave.DTOs.views.SpotifyArtistView;
 import com.example.wave.DTOs.views.SpotifyTrackView;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -22,7 +23,7 @@ public class SpotifyCatalogService {
     private final RestClient restClient = RestClient.builder()
             .baseUrl("https://api.spotify.com/v1")
             .build();
-
+    @Cacheable("SpotifyTracksSearch")
     public List<SpotifyTrackView> searchTracks(String query) {
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be blank");
@@ -50,7 +51,7 @@ public class SpotifyCatalogService {
                 .map(this::getSpotifyTrackView)
                 .toList();
     }
-
+    @Cacheable("spotifyTrackById")
     public SpotifyTrackView getTrackBySpotifyId(String spotifyTrackId) {
         if (spotifyTrackId == null || spotifyTrackId.isBlank()) {
             throw new IllegalArgumentException("spotifyTrackId must not be blank");
@@ -98,7 +99,7 @@ public class SpotifyCatalogService {
                 imageUrl
         );
     }
-
+    @Cacheable("spotifyArtistsSearch")
     public List<SpotifyArtistSearchView> searchArtists(String query) {
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be blank");
@@ -125,7 +126,7 @@ public class SpotifyCatalogService {
                 .map(this::getSpotifyArtistSearchView)
                 .toList();
     }
-
+    @Cacheable("spotifyArtistById")
     public SpotifyArtistSearchView getArtistBySpotifyId(String spotifyArtistId) {
         if (spotifyArtistId == null || spotifyArtistId.isBlank()) {
             throw new IllegalArgumentException("spotifyArtistId must not be blank");

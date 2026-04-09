@@ -8,6 +8,7 @@ import com.example.wave.entities.*;
 import com.example.wave.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ public class PreferenceService {
     private final UserGenrePreferenceRepository userGenrePreferenceRepository;
 
     @Transactional
+    @CacheEvict(value = {"userRecommendations", "cardSimilarities"}, allEntries = true)
     public void saveOrUpdateTrackPreference(Long userId, Long trackId, PreferenceType preferenceType) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
@@ -57,6 +59,7 @@ public class PreferenceService {
     }
 
     @Transactional
+    @CacheEvict(value = {"userRecommendations", "cardSimilarities"}, allEntries = true)
     public void saveArtistPreference(Long userId, Long artistId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");

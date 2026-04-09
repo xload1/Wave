@@ -8,6 +8,7 @@ import com.example.wave.entities.*;
 import com.example.wave.repositories.*;
 import com.example.wave.services.spotify.SpotifyCatalogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +25,7 @@ public class RecommendationService {
     private final UserAccountRepository userAccountRepository;
     private final TrackRepository trackRepository;
     private final SpotifyCatalogService spotifyCatalogService;
-
+    @Cacheable("userRecommendations")
     public List<UserAccount> getRecommendationList(int id){
         return  getRecommendationListAndValues(id).stream().map(UserScore::userAccount).toList();
     }
@@ -205,7 +206,7 @@ public class RecommendationService {
         u = Math.max(u, 1e-12);
         return -Math.log(-Math.log(u));
     }
-
+    @Cacheable("cardSimilarities")
     public List<CardItemListView> generateCardSimilarities(Long mainId, Long otherId){
         List<TrackR> mainTracksR = userTrackPreferenceRepository.findAllByUser_Id(mainId).stream().map(e -> new TrackR(e.getTrack(), e.getPreferenceType())).toList();
         List<TrackR> otherTracks = userTrackPreferenceRepository.findAllByUser_Id(otherId).stream().map(e -> new TrackR(e.getTrack(), e.getPreferenceType())).toList();
