@@ -4,7 +4,7 @@ import java.util.List;
 
 public record UserPreferencesView(
         Long userId,
-        String username,
+        String displayName,
         List<TrackPreferenceView> trackPreferences,
         List<ArtistPreferenceView> artistPreferences,
         List<GenrePreferenceView> genrePreferences

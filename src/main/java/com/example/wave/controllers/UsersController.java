@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import javax.naming.ServiceUnavailableException;
+
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -25,7 +27,7 @@ public class UsersController {
     private final PreferenceService preferenceService;
 
     @PostMapping
-    public ResponseEntity<CreateUserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+    public ResponseEntity<CreateUserResponse> createUser(@Valid @RequestBody CreateUserRequest request) throws ServiceUnavailableException {
         CreateUserResponse response = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

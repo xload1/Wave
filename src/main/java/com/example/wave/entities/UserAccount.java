@@ -19,19 +19,26 @@ public class UserAccount {
     private Long id;
 
     @Setter
-    @Column(name = "username", nullable = false, length = 100, unique = true)
-    private String username;
+    @Column(name = "display_name", nullable = false, length = 100)
+    private String displayName;
 
     @Setter
     @Column(name = "email", nullable = false, length = 255, unique = true)
     private String email;
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public UserAccount(String username, String email) {
-        this.username = username;
+    public UserAccount(String displayName, String email, String passwordHash) {
+        this.displayName = displayName;
         this.email = email;
+        this.passwordHash = passwordHash;
+    }
+
+    public void changePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     @PrePersist

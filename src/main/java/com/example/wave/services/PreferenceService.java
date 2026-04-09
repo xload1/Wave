@@ -162,7 +162,7 @@ public class PreferenceService {
 
         return new UserPreferencesView(
                 user.getId(),
-                user.getUsername(),
+                user.getDisplayName(),
                 trackPreferences,
                 artistPreferences,
                 genrePreferences
