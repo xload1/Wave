@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +26,7 @@ public class RecommendationService {
     private final UserAccountRepository userAccountRepository;
     private final TrackRepository trackRepository;
     private final SpotifyCatalogService spotifyCatalogService;
+    private final SwipeService swipeService;
     @Cacheable("userRecommendations")
     public List<UserAccount> getRecommendationList(int id){
         return  getRecommendationListAndValues(id).stream().map(UserScore::userAccount).toList();
@@ -141,13 +143,27 @@ public class RecommendationService {
 
         Random random = new Random();
 
-        return found.entrySet().stream()
+        Set<Long> swipedUserIds = swipeService.getSwipedUserIds((long) mainId);
+
+        List<RankedUser> rankedUsers = found.entrySet().stream()
+                .filter(entry -> entry.getKey() != mainId)
                 .map(entry -> {
                     double z = (entry.getValue() - med) / scale;
                     double noisyKey = z + temperature * gumbel(random);
                     return new RankedUser(entry.getKey(), entry.getValue(), noisyKey);
                 })
                 .sorted(Comparator.comparingDouble(RankedUser::sortKey).reversed())
+                .toList();
+
+        List<RankedUser> freshUsers = rankedUsers.stream()
+                .filter(item -> !swipedUserIds.contains((long) item.userId()))
+                .toList();
+
+        List<RankedUser> swipedUsers = rankedUsers.stream()
+                .filter(item -> swipedUserIds.contains((long) item.userId()))
+                .toList();
+
+        return Stream.concat(freshUsers.stream(), swipedUsers.stream())
                 .map(item -> new UserScore(
                         userAccountRepository.findById((long) item.userId()).orElseThrow(),
                         item.score()

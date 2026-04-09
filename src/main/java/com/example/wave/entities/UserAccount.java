@@ -28,6 +28,9 @@ public class UserAccount {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -39,6 +42,13 @@ public class UserAccount {
 
     public void changePasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+    public void changeDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public void changeDescription(String description) {
+        this.description = description;
     }
 
     @PrePersist

@@ -1,8 +1,9 @@
 package com.example.wave.DTOs.requests;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public record SendMessageRequest(
-        Long fromUserId,
-        Long toUserId,
-        String text
+        @NotBlank @Size(max = 5000) String text
 ) {
 }

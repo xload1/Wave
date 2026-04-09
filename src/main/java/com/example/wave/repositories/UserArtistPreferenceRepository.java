@@ -15,4 +15,5 @@ public interface UserArtistPreferenceRepository extends JpaRepository<UserArtist
     boolean existsByUserIdAndArtistId(Long userId, Long artistId);
 
     void deleteByUserIdAndArtistId(Long userId, Long artistId);
+    long countByUser_Id(Long userId);
 }

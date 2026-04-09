@@ -18,4 +18,5 @@ public interface UserTrackPreferenceRepository extends JpaRepository<UserTrackPr
     boolean existsByUserIdAndTrackId(Long userId, Long trackId);
 
     void deleteByUserIdAndTrackId(Long userId, Long trackId);
+    long countByUser_Id(Long userId);
 }

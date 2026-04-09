@@ -1,6 +1,7 @@
 package com.example.wave.services.spotify;
 
 import com.example.wave.DTOs.responses.SpotifyArtistSearchResponse;
+import com.example.wave.DTOs.responses.SpotifyArtistTopTracksResponse;
 import com.example.wave.DTOs.responses.SpotifyTrackSearchResponse;
 import com.example.wave.DTOs.views.SpotifyArtistSearchView;
 import com.example.wave.DTOs.views.SpotifyArtistView;
@@ -166,5 +167,30 @@ public class SpotifyCatalogService {
                 item.external_urls() == null ? null : item.external_urls().spotify(),
                 imageUrl
         );
+    }
+
+    public List<SpotifyTrackView> getArtistTopTracks(String spotifyArtistId) {
+        if (spotifyArtistId == null || spotifyArtistId.isBlank()) {
+            throw new IllegalArgumentException("spotifyArtistId must not be blank");
+        }
+
+        String accessToken = spotifyTokenService.getAccessToken();
+
+        SpotifyArtistTopTracksResponse response = restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/artists/{id}/top-tracks")
+                        .queryParam("market", "PL")
+                        .build(spotifyArtistId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .retrieve()
+                .body(SpotifyArtistTopTracksResponse.class);
+
+        if (response == null || response.tracks() == null) {
+            return List.of();
+        }
+
+        return response.tracks().stream()
+                .map(this::getSpotifyTrackView)
+                .toList();
     }
 }

@@ -1,13 +1,16 @@
 package com.example.wave.services;
 
 import com.example.wave.DTOs.views.DecryptedMessageView;
+import com.example.wave.entities.SwipeReactionType;
 import com.example.wave.entities.UserAccount;
 import com.example.wave.entities.UserMessage;
 import com.example.wave.repositories.UserAccountRepository;
-import com.example.wave.repositories.UserLikeRepository;
 import com.example.wave.repositories.UserMessageRepository;
+import com.example.wave.repositories.UserSwipeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,10 +24,11 @@ public class MessageService {
 
     private final UserMessageRepository userMessageRepository;
     private final UserAccountRepository userAccountRepository;
-    private final UserLikeRepository userLikeRepository;
+    private final SwipeService swipeService;
     private final MessageEncryptionService messageEncryptionService;
 
     @Transactional
+    @CacheEvict(value = "conversation", allEntries = true)
     public Long sendMessage(Long fromUserId, Long toUserId, String text) {
         validateSendInput(fromUserId, toUserId, text);
 
@@ -53,11 +57,11 @@ public class MessageService {
             throw new EntityNotFoundException("User not found: " + toUserId);
         }
 
-        if (!isMatched(fromUserId, toUserId)) {
+        if (!swipeService.isMatched(fromUserId, toUserId)) {
             throw new IllegalArgumentException("Users are not matched");
         }
     }
-
+    @Cacheable("conversation")
     public List<DecryptedMessageView> getConversation(Long firstUserId, Long secondUserId) {
         if (firstUserId == null) {
             throw new IllegalArgumentException("firstUserId must not be null");
@@ -80,11 +84,6 @@ public class MessageService {
                         message.getSentAt()
                 ))
                 .toList();
-    }
-
-    public boolean isMatched(Long firstUserId, Long secondUserId) {
-        return userLikeRepository.existsByFromUser_IdAndToUser_Id(firstUserId, secondUserId)
-                && userLikeRepository.existsByFromUser_IdAndToUser_Id(secondUserId, firstUserId);
     }
 
     private void validateSendInput(Long fromUserId, Long toUserId, String text) {

@@ -8,10 +8,10 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 @Entity
-@Table(name = "user_like")
+@Table(name = "user_swipe")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class UserLike {
+public class UserSwipe {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,12 +25,21 @@ public class UserLike {
     @JoinColumn(name = "to_user_id", nullable = false)
     private UserAccount toUser;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reaction_type", nullable = false, length = 20)
+    private SwipeReactionType reactionType;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public UserLike(UserAccount fromUser, UserAccount toUser) {
+    public UserSwipe(UserAccount fromUser, UserAccount toUser, SwipeReactionType reactionType) {
         this.fromUser = fromUser;
         this.toUser = toUser;
+        this.reactionType = reactionType;
+    }
+
+    public void changeReactionType(SwipeReactionType reactionType) {
+        this.reactionType = reactionType;
     }
 
     @PrePersist
