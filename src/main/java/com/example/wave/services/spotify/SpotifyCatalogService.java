@@ -10,9 +10,13 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -20,6 +24,7 @@ import java.util.List;
 public class SpotifyCatalogService {
 
     private final SpotifyTokenService spotifyTokenService;
+    private final ObjectMapper objectMapper;
 
     private final RestClient restClient = RestClient.builder()
             .baseUrl("https://api.spotify.com/v1")
@@ -176,21 +181,87 @@ public class SpotifyCatalogService {
 
         String accessToken = spotifyTokenService.getAccessToken();
 
-        SpotifyArtistTopTracksResponse response = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/artists/{id}/top-tracks")
-                        .queryParam("market", "PL")
-                        .build(spotifyArtistId))
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                .retrieve()
-                .body(SpotifyArtistTopTracksResponse.class);
+        try {
+            String body = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/artists/{id}/top-tracks")
+                            .queryParam("market", "PL")
+                            .build(spotifyArtistId))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(String.class);
 
-        if (response == null || response.tracks() == null) {
-            return List.of();
+            if (body == null || body.isBlank()) {
+                return List.of();
+            }
+
+            JsonNode root = objectMapper.readTree(body);
+            JsonNode tracksNode = root.path("tracks");
+
+            if (!tracksNode.isArray()) {
+                return List.of();
+            }
+
+            List<SpotifyTrackView> result = new ArrayList<>();
+            for (JsonNode trackNode : tracksNode) {
+                result.add(mapTrackNodeToView(trackNode));
+            }
+
+            return result;
+        } catch (Exception ex) {
+            throw new IllegalStateException("Failed to load Spotify artist top tracks", ex);
+        }
+    }
+
+    private SpotifyTrackView mapTrackNodeToView(JsonNode item) {
+        String imageUrl = null;
+
+        JsonNode images = item.path("album").path("images");
+        if (images.isArray() && !images.isEmpty()) {
+            JsonNode chosen = null;
+
+            for (JsonNode image : images) {
+                JsonNode widthNode = image.get("width");
+                if (widthNode != null && !widthNode.isNull() && widthNode.asInt() <= 300) {
+                    chosen = image;
+                    break;
+                }
+            }
+
+            if (chosen == null) {
+                chosen = images.get(images.size() - 1);
+            }
+
+            JsonNode urlNode = chosen.get("url");
+            if (urlNode != null && !urlNode.isNull()) {
+                imageUrl = urlNode.asText();
+            }
         }
 
-        return response.tracks().stream()
-                .map(this::getSpotifyTrackView)
-                .toList();
+        List<SpotifyArtistView> artists = new ArrayList<>();
+        JsonNode artistsNode = item.path("artists");
+        if (artistsNode.isArray()) {
+            for (JsonNode artistNode : artistsNode) {
+                artists.add(new SpotifyArtistView(
+                        artistNode.path("id").asText(),
+                        artistNode.path("name").asText()
+                ));
+            }
+        }
+
+        JsonNode externalUrls = item.path("external_urls");
+        String spotifyUrl = externalUrls.isObject() && externalUrls.hasNonNull("spotify")
+                ? externalUrls.get("spotify").asText()
+                : null;
+
+        return new SpotifyTrackView(
+                item.path("id").asText(),
+                item.path("name").asText(),
+                item.path("popularity").asInt(),
+                artists,
+                spotifyUrl,
+                imageUrl
+        );
     }
 }

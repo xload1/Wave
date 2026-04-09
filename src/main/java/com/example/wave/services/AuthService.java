@@ -3,8 +3,17 @@ package com.example.wave.services;
 import com.example.wave.entities.UserAccount;
 import com.example.wave.repositories.UserAccountRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +24,7 @@ public class AuthService {
 
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
 
     @Transactional
     public UserAccount register(String displayName, String email, String rawPassword) {
@@ -33,7 +43,7 @@ public class AuthService {
         return userAccountRepository.save(user);
     }
 
-    public UserAccount authenticate(String email, String rawPassword) {
+    public UserAccount login(String email, String rawPassword, HttpServletRequest request) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("email must not be blank");
         }
@@ -43,14 +53,19 @@ public class AuthService {
 
         String normalizedEmail = email.trim().toLowerCase();
 
-        UserAccount user = userAccountRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(normalizedEmail, rawPassword)
+        );
 
-        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
-        }
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
 
-        return user;
+        HttpSession session = request.getSession(true);
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
+
+        return userAccountRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalizedEmail));
     }
 
     @Transactional
@@ -76,6 +91,18 @@ public class AuthService {
         }
 
         user.changePasswordHash(passwordEncoder.encode(newRawPassword));
+    }
+
+    public UserAccount getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new IllegalStateException("No authenticated user");
+        }
+
+        String email = authentication.getName();
+
+        return userAccountRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
     }
 
     private void validateRegistrationInput(String displayName, String email, String rawPassword) {

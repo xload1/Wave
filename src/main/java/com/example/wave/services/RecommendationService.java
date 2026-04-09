@@ -27,10 +27,11 @@ public class RecommendationService {
     private final TrackRepository trackRepository;
     private final SpotifyCatalogService spotifyCatalogService;
     private final SwipeService swipeService;
-    @Cacheable("userRecommendations")
+
     public List<UserAccount> getRecommendationList(int id){
         return  getRecommendationListAndValues(id).stream().map(UserScore::userAccount).toList();
     }
+    @Cacheable("userRecommendations")
     public List<UserScore> getRecommendationListAndValues(int mainId) {
         List<UserTrackPreference> userTrackPreferences = userTrackPreferenceRepository.findAll();
 
