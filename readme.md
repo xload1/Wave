@@ -91,7 +91,7 @@ Important characteristics of the algorithm:
 - short paths are much more important than long paths,
 - direct double-favorite overlap is the strongest signal,
 - already-swiped users are sent to the tail of the feed,
-- a small controlled randomization is applied to avoid completely static ordering.
+- a small controlled randomization (Gumbel randomization) is applied to avoid completely static ordering.
 
 This gives a result that is stronger than a pure "same tracks count" baseline, while still remaining explainable.
 
@@ -396,4 +396,4 @@ It is a good fit for a diploma project because it is:
 
 ## Author
 
-Wave backend was developed as a diploma project in the Computer Science direction.
+Wave backend was developed as a diploma project by Marat Tsasiuk for WSPA  University.
