@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/spotify")
+@RequestMapping("/api/spotify")
 @RequiredArgsConstructor
 @Validated
 public class SpotifyController {
