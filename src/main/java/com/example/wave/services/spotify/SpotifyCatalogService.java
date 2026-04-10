@@ -65,6 +65,17 @@ public class SpotifyCatalogService {
 
         String accessToken = spotifyTokenService.getAccessToken();
 
+//        String raw = restClient.get()
+//                .uri(uriBuilder -> uriBuilder
+//                        .path("/tracks/{id}")
+//                        .queryParam("market", "PL")
+//                        .build(spotifyTrackId))
+//                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+//                .retrieve()
+//                .body(String.class);
+//
+//        System.out.println(raw);
+
         SpotifyTrackSearchResponse.Item item = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/tracks/{id}")
